@@ -188,6 +188,7 @@ public class XmlGenerationServiceImpl implements XmlGenerationService {
 
 	private File jaxbObjectToXML(Document document)
 	{
+		System.out.println("Generating XML");
 		try
 		{
 			//Create JAXB Context
@@ -210,24 +211,28 @@ public class XmlGenerationServiceImpl implements XmlGenerationService {
 			String filename = "sepa_xml_" + sdf.format(cal.getTime() )+ ".xml";
 
 			File file = new File(folder, filename);
+			System.out.println(file.getAbsolutePath());
 			try {
 				file.createNewFile();
 
 				//Writes XML file to file-system
 				jaxbMarshaller.marshal(document, file);
+				System.out.println("XML successfully generated");
 				return file;
 			} catch(IOException ex) {
+				System.out.println(ex.getStackTrace());
 				return null;
 			}
 		}
 		catch (JAXBException e)
 		{
-			e.printStackTrace();
+			System.out.println(e.getStackTrace());
 		}
 		return null;
 	}
 
 	private List<String> readCsv(InputStream input) {
+		System.out.println("Reading CSV");
 		List<String> lines = new ArrayList<>();
 		String line = "";
 		try
@@ -241,7 +246,7 @@ public class XmlGenerationServiceImpl implements XmlGenerationService {
 		}
 		catch (IOException e)
 		{
-			e.printStackTrace();
+			System.out.println(e.getStackTrace());
 		}
 		return lines;
 	}
@@ -254,6 +259,7 @@ public class XmlGenerationServiceImpl implements XmlGenerationService {
 
 	private String cleanTextContent(String text)
 	{
+		System.out.println("Cleaning Text Content");
 		// strips off all non-ASCII characters
 		text = text.replaceAll("[^\\x00-\\x7F]", "");
 
