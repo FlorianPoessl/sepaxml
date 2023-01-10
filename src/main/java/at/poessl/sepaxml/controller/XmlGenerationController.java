@@ -1,5 +1,6 @@
 package at.poessl.sepaxml.controller;
 
+import at.poessl.sepaxml.schema.sepa.Document;
 import at.poessl.sepaxml.service.XmlGenerationService;
 import org.apache.tomcat.util.http.fileupload.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,11 +14,16 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLConnection;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 
 @Controller
 public class XmlGenerationController {
@@ -37,26 +43,22 @@ public class XmlGenerationController {
 	   	@RequestParam("message") String message, HttpServletResponse response) throws IOException {
 		// Save the file to disk or process it in some other way
 
-		File xml = xmlGenerationService.generateSepaLastschriftXml(csv.getInputStream(), accountIban, accountBic, message, accountName, messageId, creditorId, bankId);
+		Document xml = xmlGenerationService.generateSepaLastschriftXml(csv.getInputStream(), accountIban, accountBic, message, accountName, messageId, creditorId, bankId);
 
-		if (xml == null) return;
+		Calendar cal = Calendar.getInstance();
+		SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy-HH-mm-ss");
+		String filename = "sepa_xml_" + sdf.format(cal.getTime() )+ ".xml";
 
-		InputStream inputStream = new FileInputStream(xml);
-
-		String mimeType = URLConnection.guessContentTypeFromStream(inputStream);
-		if (mimeType == null) {
-			mimeType = "application/octet-stream";
+		try {
+			response.setContentType("application/xml");
+			response.setHeader("Content-Disposition", "attachment; filename=" + filename);
+			JAXBContext jaxbContext = JAXBContext.newInstance(Document.class);
+			Marshaller marshaller = jaxbContext.createMarshaller();
+			marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
+			marshaller.marshal(xml, response.getOutputStream());
+		} catch(JAXBException ex) {
+			System.out.println(ex.getMessage());
 		}
-
-		response.setContentType(mimeType);
-		response.setHeader("Content-Disposition", String.format("inline; filename=\"" + xml.getName() + "\""));
-		response.setContentLength((int) xml.length());
-
-		InputStreamSource inputStreamSource = new InputStreamResource(inputStream);
-		IOUtils.copy(inputStreamSource.getInputStream(), response.getOutputStream());
-		response.flushBuffer();
-
-		//return "redirect:/success";
 	}
 
 }

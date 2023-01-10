@@ -32,7 +32,7 @@ import javax.xml.datatype.XMLGregorianCalendar;
 public class XmlGenerationServiceImpl implements XmlGenerationService {
 
 	@Override
-	public File generateSepaLastschriftXml(InputStream inputcsv, String accountIban, String accountBic, String message, String accountName, String messageId, String creditorId, String bankId) {
+	public Document generateSepaLastschriftXml(InputStream inputcsv, String accountIban, String accountBic, String message, String accountName, String messageId, String creditorId, String bankId) {
 		try {
 			List<String> userList = readCsv(inputcsv);
 
@@ -179,54 +179,9 @@ public class XmlGenerationServiceImpl implements XmlGenerationService {
 			pain00800101.setGrpHdr(groupHeader1);
 			document.setPain00800101(pain00800101);
 
-			return jaxbObjectToXML(document);
+			return document;
 		} catch(Exception ex) {
 			System.out.println(ex.getMessage());
-		}
-		return null;
-	}
-
-	private File jaxbObjectToXML(Document document)
-	{
-		System.out.println("Generating XML");
-		try
-		{
-			//Create JAXB Context
-			JAXBContext jaxbContext = JAXBContext.newInstance(Document.class);
-
-			//Create Marshaller
-			Marshaller jaxbMarshaller = jaxbContext.createMarshaller();
-			jaxbMarshaller.setProperty(Marshaller.JAXB_FRAGMENT, Boolean.TRUE);
-
-			//Required formatting??
-			jaxbMarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
-
-			ClassLoader classLoader = getClass().getClassLoader();
-			//Store XML to File
-			File folder = new File(classLoader.getResource(".").getFile(), "xmls");
-			//folder = new File("C:\\Data");
-
-			Calendar cal = Calendar.getInstance();
-			SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy-HH-mm-ss");
-			String filename = "sepa_xml_" + sdf.format(cal.getTime() )+ ".xml";
-
-			File file = new File(folder, filename);
-			System.out.println(file.getAbsolutePath());
-			try {
-				file.createNewFile();
-
-				//Writes XML file to file-system
-				jaxbMarshaller.marshal(document, file);
-				System.out.println("XML successfully generated");
-				return file;
-			} catch(IOException ex) {
-				System.out.println(ex.getStackTrace());
-				return null;
-			}
-		}
-		catch (JAXBException e)
-		{
-			System.out.println(e.getStackTrace());
 		}
 		return null;
 	}
