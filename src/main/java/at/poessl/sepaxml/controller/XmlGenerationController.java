@@ -33,17 +33,19 @@ public class XmlGenerationController {
 
 	@PostMapping("/convert")
 	@ResponseBody
-	public void handleFileUpload(@RequestParam("csv") MultipartFile csv,
+	public void handleFileUpload(@RequestParam("excel") MultipartFile excel,
 		@RequestParam("accountName") String accountName,
 	   	@RequestParam("accountIban") String accountIban,
 	   	@RequestParam("accountBic") String accountBic,
 	   	@RequestParam("messageId") String messageId,
 	   	@RequestParam("creditorId") String creditorId,
+		@RequestParam("mandatsId") String mandatsId,
+		@RequestParam("mandatsIdLength") int mandatsIdLength,
 	   	@RequestParam("bankId") String bankId,
 	   	@RequestParam("message") String message, HttpServletResponse response) throws IOException {
 		// Save the file to disk or process it in some other way
 
-		Document xml = xmlGenerationService.generateSepaLastschriftXml(csv.getInputStream(), accountIban, accountBic, message, accountName, messageId, creditorId, bankId);
+		Document xml = xmlGenerationService.generateSepaLastschriftXml(excel.getInputStream(), accountIban, accountBic, message, accountName, messageId, creditorId, mandatsId, mandatsIdLength, bankId);
 
 		Calendar cal = Calendar.getInstance();
 		SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy-HH-mm-ss");

@@ -15,16 +15,27 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import at.poessl.sepaxml.schema.sepa.*;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.FormulaEvaluator;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
+import org.thymeleaf.util.StringUtils;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
+import javax.xml.datatype.DatatypeConstants;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
 
@@ -32,9 +43,9 @@ import javax.xml.datatype.XMLGregorianCalendar;
 public class XmlGenerationServiceImpl implements XmlGenerationService {
 
 	@Override
-	public Document generateSepaLastschriftXml(InputStream inputcsv, String accountIban, String accountBic, String message, String accountName, String messageId, String creditorId, String bankId) {
+	public Document generateSepaLastschriftXml(InputStream inputExcel, String accountIban, String accountBic, String message, String accountName, String messageId, String creditorId, String mandatsId, int mandatsIdLength, String bankId) {
 		try {
-			List<String> userList = readCsv(inputcsv);
+			Map<Integer, List<String>> userMap = readExcel(inputExcel);
 
 			Document document = new Document();
 			Pain00800101 pain00800101 = new Pain00800101();
@@ -48,11 +59,12 @@ public class XmlGenerationServiceImpl implements XmlGenerationService {
 			Calendar cal = Calendar.getInstance();
 			c.setTime(cal.getTime());
 			XMLGregorianCalendar date2 = DatatypeFactory.newInstance().newXMLGregorianCalendar(c);
+			date2.setTimezone(DatatypeConstants.FIELD_UNDEFINED);
 
 			groupHeader1.setCreDtTm(date2);
 
 			groupHeader1.setCtrlSum(BigDecimal.ZERO);
-			groupHeader1.setNbOfTxs(String.valueOf(userList.size()));
+			groupHeader1.setNbOfTxs(String.valueOf(userMap.size()));
 			groupHeader1.setGrpg(Grouping1Code.MIXD);
 
 			// InitgPty
@@ -70,21 +82,19 @@ public class XmlGenerationServiceImpl implements XmlGenerationService {
 
 			BigDecimal sum = BigDecimal.ZERO;
 
-			for (String line : userList) {
-				line = cleanTextContent(line);
-				String[] user = line.split(";");
-				String mandatsId = user[0];
-				String name = user[1];
-				String iban = user[2];
-				String fea = user[3];
-				String bic = user[4];
+			for (Map.Entry<Integer, List<String>> line : userMap.entrySet()) {
+				String resolveMandatsId = resolveMandatsId(mandatsId, cleanTextContent(line.getValue().get(0)), mandatsIdLength);
+				String name = cleanTextContent(line.getValue().get(1));
+				String iban = cleanTextContent(line.getValue().get(2));
+				String fea = cleanTextContent(line.getValue().get(3));
+				String bic = cleanTextContent(line.getValue().get(4));
 
 				BigDecimal value = new BigDecimal(fea);
 				sum = sum.add(value);
 
 				// PaymentInformation
 				PaymentInstructionInformation2 paymentInstructionInformation2 = new PaymentInstructionInformation2();
-				paymentInstructionInformation2.setPmtInfId(mandatsId + getId());
+				paymentInstructionInformation2.setPmtInfId(resolveMandatsId + getId());
 				paymentInstructionInformation2.setPmtMtd(PaymentMethod2Code.DD);
 
 				PaymentTypeInformation2 paymentTypeInformation2 = new PaymentTypeInformation2();
@@ -129,7 +139,7 @@ public class XmlGenerationServiceImpl implements XmlGenerationService {
 
 				DirectDebitTransaction1 directDebitTransaction1 = new DirectDebitTransaction1();
 				MandateRelatedInformation1 mandateRelatedInformation1 = new MandateRelatedInformation1();
-				mandateRelatedInformation1.setMndtId(mandatsId);
+				mandateRelatedInformation1.setMndtId(resolveMandatsId);
 				mandateRelatedInformation1.setDtOfSgntr(date2);
 				directDebitTransaction1.setMndtRltdInf(mandateRelatedInformation1);
 
@@ -186,6 +196,45 @@ public class XmlGenerationServiceImpl implements XmlGenerationService {
 		return null;
 	}
 
+	private Map<Integer, List<String>> readExcel(InputStream input) throws Exception {
+		Workbook workbook = new XSSFWorkbook(input);
+		Sheet sheet = workbook.getSheetAt(1);
+		FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+		int i = 0;
+		Map<Integer, List<String>> data = new HashMap<>();
+		for (Row row : sheet) {
+			data.put(i, new ArrayList<String>());
+			int cellIndex = 0;
+			for (Cell cell : row) {
+				switch (evaluator.evaluateFormulaCell(cell)) {
+					case STRING:
+						if (cell.getStringCellValue().equals("")) {
+							data.remove(i);
+							continue;
+						}
+						data.get(i).add(cell.getStringCellValue());
+						break;
+					case NUMERIC:
+						if (cellIndex == 0) {
+							data.get(i).add(String.valueOf((int) cell.getNumericCellValue()));
+						} else {
+							data.get(i).add(String.valueOf(cell.getNumericCellValue()));
+						}
+						break;
+					default:
+						if (cell.getStringCellValue().equals("")) {
+							data.remove(i);
+							continue;
+						}
+						throw new Exception("Not supported");
+				}
+				cellIndex++;
+			}
+			i++;
+		}
+		return data;
+	}
+
 	private List<String> readCsv(InputStream input) {
 		System.out.println("Reading CSV");
 		List<String> lines = new ArrayList<>();
@@ -204,6 +253,13 @@ public class XmlGenerationServiceImpl implements XmlGenerationService {
 			System.out.println(e.getStackTrace());
 		}
 		return lines;
+	}
+
+	private String resolveMandatsId(String prefix, String index, int length) {
+		int existing = index.length();
+		int zeros = length-existing;
+		String zeroString = StringUtils.repeat('0', zeros);
+		return prefix + zeroString + index;
 	}
 
 	private static String getId() {
