@@ -22,6 +22,7 @@ import java.util.UUID;
 
 import at.poessl.sepaxml.schema.sepa.*;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.FormulaEvaluator;
 import org.apache.poi.ss.usermodel.Row;
@@ -198,7 +199,7 @@ public class XmlGenerationServiceImpl implements XmlGenerationService {
 
 	private Map<Integer, List<String>> readExcel(InputStream input) throws Exception {
 		Workbook workbook = new XSSFWorkbook(input);
-		Sheet sheet = workbook.getSheetAt(1);
+		Sheet sheet = workbook.getSheetAt(0);
 		FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
 		int i = 0;
 		Map<Integer, List<String>> data = new HashMap<>();
@@ -206,7 +207,7 @@ public class XmlGenerationServiceImpl implements XmlGenerationService {
 			data.put(i, new ArrayList<String>());
 			int cellIndex = 0;
 			for (Cell cell : row) {
-				switch (evaluator.evaluateFormulaCell(cell)) {
+				switch (cell.getCellType()) {
 					case STRING:
 						if (cell.getStringCellValue().equals("")) {
 							data.remove(i);
