@@ -93,7 +93,8 @@ public class XmlGenerationServiceImpl implements XmlGenerationService {
 			String name = cleanTextContent(line.getValue().get(1));
 			String iban = cleanTextContent(line.getValue().get(2));
 			String fea = cleanTextContent(line.getValue().get(3));
-			String bic = cleanTextContent(line.getValue().get(4));
+
+			String bic = line.getValue().size() > 4 ? cleanTextContent(line.getValue().get(4)) : null;
 
 			BigDecimal value = new BigDecimal(fea);
 			sum = sum.add(value);
@@ -163,11 +164,13 @@ public class XmlGenerationServiceImpl implements XmlGenerationService {
 
 			directDebitTransactionInformation1.setDrctDbtTx(directDebitTransaction1);
 
-			BranchAndFinancialInstitutionIdentification3 branchAndFinancialInstitutionIdentification31 = new BranchAndFinancialInstitutionIdentification3();
-			FinancialInstitutionIdentification5Choice financialInstitutionIdentification5Choice1 = new FinancialInstitutionIdentification5Choice();
-			financialInstitutionIdentification5Choice1.setBIC(bic);
-			branchAndFinancialInstitutionIdentification31.setFinInstnId(financialInstitutionIdentification5Choice1);
-			directDebitTransactionInformation1.setDbtrAgt(branchAndFinancialInstitutionIdentification31);
+			if (bic != null) {
+				BranchAndFinancialInstitutionIdentification3 branchAndFinancialInstitutionIdentification31 = new BranchAndFinancialInstitutionIdentification3();
+				FinancialInstitutionIdentification5Choice financialInstitutionIdentification5Choice1 = new FinancialInstitutionIdentification5Choice();
+				financialInstitutionIdentification5Choice1.setBIC(bic);
+				branchAndFinancialInstitutionIdentification31.setFinInstnId(financialInstitutionIdentification5Choice1);
+				directDebitTransactionInformation1.setDbtrAgt(branchAndFinancialInstitutionIdentification31);
+			}
 
 			PartyIdentification8 partyIdentification83 = new PartyIdentification8();
 			partyIdentification83.setNm(name);
