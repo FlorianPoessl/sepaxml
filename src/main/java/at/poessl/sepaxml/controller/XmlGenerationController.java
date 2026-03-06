@@ -54,7 +54,7 @@ public class XmlGenerationController {
 		// Save the file to disk or process it in some other way
 
 		try {
-			Document xml = xmlGenerationService.generateSepaLastschriftXml(excel.getInputStream(), accountIban, accountBic, message, accountName, messageId, creditorId, mandatsId, mandatsIdLength, bankId);
+			Document xml = xmlGenerationService.generateSepaLastschriftXml(excel.getInputStream(), excel.getOriginalFilename(), accountIban, accountBic, message, accountName, messageId, creditorId, mandatsId, mandatsIdLength, bankId);
 
 			Calendar cal = Calendar.getInstance();
 			SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy-HH-mm-ss");

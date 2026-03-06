@@ -9,6 +9,6 @@ import java.io.InputStream;
 
 public interface XmlGenerationService {
 
-	Document generateSepaLastschriftXml(InputStream inputexcel, String accountIban, String accountBic, String message, String accountName, String messageId, String creditorId, String mandatsId, int mandatsIdLength, String bankId) throws Exception;
+	Document generateSepaLastschriftXml(InputStream inputexcel, String fileName, String accountIban, String accountBic, String message, String accountName, String messageId, String creditorId, String mandatsId, int mandatsIdLength, String bankId) throws Exception;
 
 }

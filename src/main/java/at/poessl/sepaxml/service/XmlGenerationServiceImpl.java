@@ -1,56 +1,71 @@
 package at.poessl.sepaxml.service;
 
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Marshaller;
-
+import at.poessl.sepaxml.schema.sepa.AccountIdentification3Choice;
+import at.poessl.sepaxml.schema.sepa.BranchAndFinancialInstitutionIdentification3;
+import at.poessl.sepaxml.schema.sepa.CashAccount7;
+import at.poessl.sepaxml.schema.sepa.CurrencyAndAmount;
+import at.poessl.sepaxml.schema.sepa.DirectDebitTransaction1;
+import at.poessl.sepaxml.schema.sepa.DirectDebitTransactionInformation1;
+import at.poessl.sepaxml.schema.sepa.Document;
+import at.poessl.sepaxml.schema.sepa.FinancialInstitutionIdentification5Choice;
+import at.poessl.sepaxml.schema.sepa.GenericIdentification4;
+import at.poessl.sepaxml.schema.sepa.GroupHeader1;
+import at.poessl.sepaxml.schema.sepa.Grouping1Code;
+import at.poessl.sepaxml.schema.sepa.LocalInstrument1Choice;
+import at.poessl.sepaxml.schema.sepa.MandateRelatedInformation1;
+import at.poessl.sepaxml.schema.sepa.OrganisationIdentification2;
+import at.poessl.sepaxml.schema.sepa.Pain00800101;
+import at.poessl.sepaxml.schema.sepa.Party2Choice;
+import at.poessl.sepaxml.schema.sepa.PartyIdentification8;
+import at.poessl.sepaxml.schema.sepa.PaymentIdentification1;
+import at.poessl.sepaxml.schema.sepa.PaymentInstructionInformation2;
+import at.poessl.sepaxml.schema.sepa.PaymentMethod2Code;
+import at.poessl.sepaxml.schema.sepa.PaymentTypeInformation2;
+import at.poessl.sepaxml.schema.sepa.PersonIdentification3;
+import at.poessl.sepaxml.schema.sepa.RemittanceInformation1;
+import at.poessl.sepaxml.schema.sepa.SequenceType1Code;
+import at.poessl.sepaxml.schema.sepa.ServiceLevel2Code;
+import at.poessl.sepaxml.schema.sepa.ServiceLevel3Choice;
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
-import at.poessl.sepaxml.schema.sepa.*;
+import javax.xml.datatype.DatatypeConstants;
+import javax.xml.datatype.DatatypeFactory;
+import javax.xml.datatype.XMLGregorianCalendar;
 import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.CellValue;
-import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.FormulaEvaluator;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 import org.thymeleaf.util.StringUtils;
-
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Marshaller;
-import javax.xml.datatype.DatatypeConfigurationException;
-import javax.xml.datatype.DatatypeConstants;
-import javax.xml.datatype.DatatypeFactory;
-import javax.xml.datatype.XMLGregorianCalendar;
 
 @Component("xmlGenerationService")
 public class XmlGenerationServiceImpl implements XmlGenerationService {
 
 	@Override
-	public Document generateSepaLastschriftXml(InputStream inputExcel, String accountIban, String accountBic, String message, String accountName, String messageId, String creditorId, String mandatsId, int mandatsIdLength, String bankId) throws Exception {
-	
-		Map<Integer, List<String>> userMap = readExcel(inputExcel);
+	public Document generateSepaLastschriftXml(InputStream inputExcel, String fileName, String accountIban, String accountBic, String message, String accountName, String messageId, String creditorId, String mandatsId, int mandatsIdLength, String bankId) throws Exception {
+
+		Map<Integer, List<String>> userMap;
+		if (fileName != null && fileName.toLowerCase().endsWith(".csv")) {
+			userMap = readCsv(inputExcel);
+		} else {
+			userMap = readExcel(inputExcel);
+		}
+
 		if (userMap == null) {
-			throw new RuntimeException("Input Excel has no sheet with 'Einzug'");
+			throw new RuntimeException("Input file could not be processed or has no sheet with 'Einzug'");
 		}
 
 		Document document = new Document();
@@ -267,24 +282,21 @@ public class XmlGenerationServiceImpl implements XmlGenerationService {
 		return data;
 	}
 
-	private List<String> readCsv(InputStream input) {
+	private Map<Integer, List<String>> readCsv(InputStream input) throws Exception {
 		System.out.println("Reading CSV");
-		List<String> lines = new ArrayList<>();
-		String line = "";
-		try
-		{
-			BufferedReader br = new BufferedReader(new InputStreamReader(input));
-			while ((line = br.readLine()) != null)   //returns a Boolean value
-			{
-				lines.add(line);
-				System.out.println(line);
+		Map<Integer, List<String>> data = new HashMap<>();
+		int i = 0;
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(input))) {
+			String line;
+			while ((line = br.readLine()) != null) {
+				String[] values = line.split(";");
+				List<String> rowData = new ArrayList<>();
+				Collections.addAll(rowData, values);
+				data.put(i, rowData);
+				i++;
 			}
 		}
-		catch (IOException e)
-		{
-			System.out.println(e.getStackTrace());
-		}
-		return lines;
+		return data;
 	}
 
 	private String resolveMandatsId(String prefix, String index, int length) {
